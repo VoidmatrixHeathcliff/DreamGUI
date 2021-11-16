@@ -2,15 +2,18 @@ Graphic = require("@Graphic")
 Input   = require("@Input")
 String  = require("@String")
 Time    = require("@Time")
+Window  = require("@Window")
 
 --[[
     DreamGUI
 
     UpdateEvent()
-    UpdateRender()
+    UpdateFrame()
     Remove(_ele)
 
     DialogBox(_params)
+    Label(_params)
+    Button(_params)
 --]]
 
 local DreamGUI = {}
@@ -26,13 +29,27 @@ DreamGUI.__last_update_render = 0
 DreamGUI.__DEFAULT_COLOR_TEXT = {r = 200, g = 200, b = 200, a = 255}
 DreamGUI.__DEFAULT_COLOR_BACK = {r = 45, g = 45, b = 45, a = 255}
 
+DreamGUI.__cursor_pos_x, DreamGUI.__cursor_pos_y = 0, 0
+
+DreamGUI.__DEFAULT_EMPTY_FUNC = function() end
+
+DreamGUI.__CheckCursorInRect = function(_rect)
+    return DreamGUI.__cursor_pos_x >= _rect.x 
+        and DreamGUI.__cursor_pos_x <= _rect.x + _rect.w 
+        and DreamGUI.__cursor_pos_y >= _rect.y 
+        and DreamGUI.__cursor_pos_y <= _rect.y + _rect.h
+end
+
 DreamGUI.UpdateEvent = function(_event_type)
+    if _event_type == Input.EVENT_MOUSEMOTION then
+        DreamGUI.__cursor_pos_x, DreamGUI.__cursor_pos_y = Input.GetCursorPosition()
+    end
     for _, ele in pairs(DreamGUI.__elements) do 
         ele:UpdateEvent(_event_type) 
     end
 end
 
-DreamGUI.UpdateRender = function()
+DreamGUI.UpdateFrame = function()
     -- 如果是第一次更新 GUI，则重置定时器时间
     local current_time = Time.GetInitTime()
     if DreamGUI.__is_first_update_render then
@@ -42,7 +59,7 @@ DreamGUI.UpdateRender = function()
     DreamGUI.__interval_render = current_time - DreamGUI.__last_update_render
     DreamGUI.__last_update_render = current_time
     for _, ele in pairs(DreamGUI.__elements) do 
-        ele:UpdateRender() 
+        ele:UpdateFrame() 
     end
 end
 
@@ -101,7 +118,11 @@ DreamGUI.DialogBox = function(_params)
     -- 当前是否正在播放动画
     ele.__animating = true
     -- 原始文本内容
-    ele.__raw_text = _params.text or ""
+    if not _params.text or _params.text == "" then
+        ele.__raw_text = " "
+    else
+        ele.__raw_text = _params.text
+    end
     -- 换行后的文本列表渲染信息
     ele.__line_text_render_info = {}
     -- 文本显示速度，-1 为立即显示
@@ -268,7 +289,7 @@ DreamGUI.DialogBox = function(_params)
 
     function ele:UpdateEvent(_event_type) end
 
-    function ele:UpdateRender()
+    function ele:UpdateFrame()
 
         if self.__back_mode == 1 then
             Graphic.RenderTexture(self.__back_texture, self.__area)
@@ -353,7 +374,11 @@ DreamGUI.Label = function(_params)
     -- 竖直内边距
     ele.__padding_y = _params.padding_y or 0
     -- 文本
-    ele.__text = _params.text or ""
+    if not _params.text or _params.text == "" then
+        ele.__text = " "
+    else
+        ele.__text = _params.text
+    end
     -- 文本颜色
     ele.__text_color = _params.text_color or DreamGUI.__DEFAULT_COLOR_TEXT
     -- 背景颜色
@@ -500,7 +525,7 @@ DreamGUI.Label = function(_params)
 
     function ele:UpdateEvent(_event_type) end
 
-    function ele:UpdateRender()
+    function ele:UpdateFrame()
         if self.__back_mode == 0 then
             Graphic.SetDrawColor(self.__back_color)
             Graphic.DrawRectangle(self.__area, true)
@@ -517,6 +542,148 @@ DreamGUI.Label = function(_params)
     -- 如果此时文本纹理已存在，则计算纹理的显示和裁剪矩形
     if ele.__text_texture then
         ele:__UpdateDstAndSrcRect()
+    end
+
+    table.insert(DreamGUI.__elements, ele)
+
+    return ele
+
+end
+
+--[[
+    Button
+    
+    padding_x
+    padding_y
+    text
+    text_color
+    back_color
+    back_texture
+    back_mode
+    frame_color
+    font
+    area
+    align_mode_x
+    align_mode_y
+    on_hover
+    on_leave
+    on_hanging
+    on_down
+    on_up
+    on_pushing
+    on_click
+    enable
+    on_enable
+    on_disable
+
+    SetText(_str)
+    SetFont(_font)
+    SetPadding(_widthX, _widthY)
+    SetTextColor(_color)
+    SetBackMode(_val)
+    SetBackColor(_color)
+    SetBackTexture(_texture)
+    SetFrameColor(_texture)
+    SetAlignMode(_modeX, _modeY)
+    Transform(_rect)
+    SetOnHover(_func)
+    SetOnLeave(_func)
+    SetOnHanging(_func)
+    SetOnDown(_func)
+    SetOnUp(_func)
+    SetOnPushing(_func)
+    SetOnClick(_func)
+    SetEnable(_flag)
+    SetOnEnable(_func)
+    SetOnDisable(_func)
+--]]
+
+DreamGUI.Button = function(_params)
+
+    assert(type(_params) == "table")
+
+    local ele = DreamGUI.Label(_params)
+
+    -- 光标悬停回调
+    ele.__on_hover = _params.on_hover or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 光标移出回调
+    ele.__on_leave = _params.on_leave or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 光标保持悬停回调
+    ele.__on_hanging = _params.on_hanging or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 按钮按下回调
+    ele.__on_down = _params.on_down or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 按钮抬起回调
+    ele.__on_up = _params.on_up or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 按钮保持按下回调
+    ele.__on_pushing = _params.on_pushing or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 按钮单击回调
+    ele.__on_click = _params.on_click or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 按钮是否启用
+    ele.__enable = _params.enable or true
+    -- 按钮启用回调
+    ele.__on_enable = _params.on_enable or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 按钮禁用回调
+    ele.__on_disable = _params.on_disable or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 是否进入按钮区域
+    ele.__enter = false
+    -- 是否按下
+    ele.__down = false
+
+    function ele:SetEnable(_flag)
+        local is_hover = DreamGUI.__CheckCursorInRect(self.__area)
+
+        if self.__enable and not _flag then
+            if is_hover then Window.SetCursorStyle(Window.CURSOR_NO) end
+            self.__on_disable() 
+        end
+        if not self.__enable and _flag then
+            if is_hover then Window.SetCursorStyle(Window.CURSOR_HAND) end
+            self.__on_enable() 
+        end
+        self.__enable = _flag
+    end
+
+    function ele:UpdateEvent(_event_type)
+        local is_hover = DreamGUI.__CheckCursorInRect(self.__area)
+
+        if _event_type == Input.EVENT_MOUSEMOTION then
+            if is_hover and not self.__enter then
+                if self.__enable then
+                    Window.SetCursorStyle(Window.CURSOR_HAND)
+                    self.__on_hover()
+                else
+                    Window.SetCursorStyle(Window.CURSOR_NO)
+                end
+            elseif not is_hover and self.__enter then
+                Window.SetCursorStyle(Window.CURSOR_ARROW)
+                if self.__enable then self.__on_leave() end
+            end
+        elseif self.__enable then
+            if _event_type == Input.EVENT_MOUSEBTNDOWN then
+                if is_hover and not self.__down then
+                    self.__down = true
+                    self.__on_down()
+                end
+            elseif _event_type == Input.EVENT_MOUSEBTNUP then
+                if self.__down then
+                    self.__down = false
+                    self.__on_up()
+                    if is_hover then self.__on_click() end
+                end
+            end
+        end
+
+        self.__enter = is_hover
+    end
+
+    local base_update_frame = ele.UpdateFrame
+    function ele:UpdateFrame()
+        if self.__enable then
+            if self.__enter then self.__on_hanging() end
+            if self.__down then self.__on_pushing() end
+        end
+
+        base_update_frame(self)
     end
 
     table.insert(DreamGUI.__elements, ele)
