@@ -10,6 +10,9 @@ Window  = require("@Window")
     UpdateEvent()
     UpdateFrame()
     Remove(_ele)
+    Load(_list)
+    Dump()
+    Clear()
 
     DialogBox(_params)
     Label(_params)
@@ -74,6 +77,19 @@ DreamGUI.Remove = function(_ele)
         end
     end
 end
+
+DreamGUI.Load = function(_list)
+    DreamGUI.__elements = _list
+end
+
+DreamGUI.Dump = function()
+    return DreamGUI.__elements
+end
+
+DreamGUI.Clear = function()
+    DreamGUI.__elements = {}
+end
+
 
 --[[
     DialogBox
@@ -335,6 +351,7 @@ DreamGUI.DialogBox = function(_params)
 
 end
 
+
 --[[
     Label
     
@@ -550,6 +567,7 @@ DreamGUI.Label = function(_params)
 
 end
 
+
 --[[
     Button
     
@@ -585,7 +603,6 @@ end
     SetBackTexture(_texture)
     SetFrameColor(_texture)
     SetAlignMode(_modeX, _modeY)
-    Transform(_rect)
     SetOnHover(_func)
     SetOnLeave(_func)
     SetOnHanging(_func)
@@ -596,6 +613,7 @@ end
     SetEnable(_flag)
     SetOnEnable(_func)
     SetOnDisable(_func)
+    Transform(_rect)
 --]]
 
 DreamGUI.Button = function(_params)
@@ -634,11 +652,11 @@ DreamGUI.Button = function(_params)
 
         if self.__enable and not _flag then
             if is_hover then Window.SetCursorStyle(Window.CURSOR_NO) end
-            self.__on_disable() 
+            self:__on_disable() 
         end
         if not self.__enable and _flag then
             if is_hover then Window.SetCursorStyle(Window.CURSOR_HAND) end
-            self.__on_enable() 
+            self:__on_enable() 
         end
         self.__enable = _flag
     end
@@ -650,13 +668,13 @@ DreamGUI.Button = function(_params)
             if is_hover and not self.__enter then
                 if self.__enable then
                     Window.SetCursorStyle(Window.CURSOR_HAND)
-                    self.__on_hover()
+                    self:__on_hover()
                 else
                     Window.SetCursorStyle(Window.CURSOR_NO)
                 end
             elseif not is_hover and self.__enter then
                 Window.SetCursorStyle(Window.CURSOR_ARROW)
-                if self.__enable then self.__on_leave() end
+                if self.__enable then self:__on_leave() end
             end
         elseif self.__enable then
             if _event_type == Input.EVENT_MOUSEBTNDOWN then
@@ -667,8 +685,8 @@ DreamGUI.Button = function(_params)
             elseif _event_type == Input.EVENT_MOUSEBTNUP then
                 if self.__down then
                     self.__down = false
-                    self.__on_up()
-                    if is_hover then self.__on_click() end
+                    self:__on_up()
+                    if is_hover then self:__on_click() end
                 end
             end
         end
@@ -679,8 +697,8 @@ DreamGUI.Button = function(_params)
     local base_update_frame = ele.UpdateFrame
     function ele:UpdateFrame()
         if self.__enable then
-            if self.__enter then self.__on_hanging() end
-            if self.__down then self.__on_pushing() end
+            if self.__enter then self:__on_hanging() end
+            if self.__down then self:__on_pushing() end
         end
 
         base_update_frame(self)
@@ -691,5 +709,6 @@ DreamGUI.Button = function(_params)
     return ele
 
 end
+
 
 return DreamGUI
