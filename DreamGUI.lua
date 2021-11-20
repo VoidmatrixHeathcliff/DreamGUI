@@ -29,8 +29,13 @@ DreamGUI.__is_first_update_render = true
 
 DreamGUI.__last_update_render = 0
 
-DreamGUI.__DEFAULT_COLOR_TEXT = {r = 200, g = 200, b = 200, a = 255}
-DreamGUI.__DEFAULT_COLOR_BACK = {r = 45, g = 45, b = 45, a = 255}
+DreamGUI.__COLOR = {
+    TRANS = {r = 0, g = 0, b = 0, a = 0},
+    WHITE = {r = 220, g = 220, b = 220, a = 255},
+    GRAY = {r = 185, g = 185, b = 185, a = 255},
+    BLACK = {r = 45, g = 45, b = 45, a = 255},
+    BLUE = {r = 89, g = 185, b = 198, a = 255},
+}
 
 DreamGUI.__cursor_pos_x, DreamGUI.__cursor_pos_y = 0, 0
 
@@ -80,6 +85,7 @@ end
 
 DreamGUI.Load = function(_list)
     DreamGUI.__elements = _list
+    Window.SetCursorStyle(Window.CURSOR_ARROW)
 end
 
 DreamGUI.Dump = function()
@@ -88,6 +94,7 @@ end
 
 DreamGUI.Clear = function()
     DreamGUI.__elements = {}
+    Window.SetCursorStyle(Window.CURSOR_ARROW)
 end
 
 
@@ -144,11 +151,11 @@ DreamGUI.DialogBox = function(_params)
     -- 文本显示速度，-1 为立即显示
     ele.__text_speed = _params.speed or -1
     -- 文本颜色
-    ele.__text_color = _params.text_color or DreamGUI.__DEFAULT_COLOR_TEXT
+    ele.__text_color = _params.text_color or DreamGUI.__COLOR.WHITE
     -- 纯色背景颜色
-    ele.__back_color = _params.back_color or DreamGUI.__DEFAULT_COLOR_BACK
+    ele.__back_color = _params.back_color or DreamGUI.__COLOR.BLACK
     -- 背景纹理
-    ele.__back_texture = _params.back_texture or nil
+    ele.__back_texture = _params.back_texture
     -- 背景模式，0 为纯色背景，1 为纹理背景
     if _params.back_mode then
         ele.__back_mode = _params.back_mode
@@ -158,7 +165,7 @@ DreamGUI.DialogBox = function(_params)
         ele.__back_mode = 0
     end
     -- 文本字体
-    ele.__font = _params.font or nil
+    ele.__font = _params.font
     -- 字体高度
     if ele.__font then
         ele.__font_height = ele.__font:Height()
@@ -220,8 +227,14 @@ DreamGUI.DialogBox = function(_params)
     end
 
     function ele:SetText(_str)
-        self.__raw_text = _str
-        self.__UpdateLineTextRenderInfo()
+        if not _str or _str == "" then
+            self.__raw_text = " "
+        else
+            self.__raw_text = _str
+        end
+        if self.__font then
+            self.__UpdateLineTextRenderInfo()
+        end
     end
 
     function ele:SetFont(_font)
@@ -375,7 +388,7 @@ end
     SetBackMode(_val)
     SetBackColor(_color)
     SetBackTexture(_texture)
-    SetFrameColor(_texture)
+    SetFrameColor(_color)
     SetAlignMode(_modeX, _modeY)
     Transform(_rect)
 --]]
@@ -397,11 +410,11 @@ DreamGUI.Label = function(_params)
         ele.__text = _params.text
     end
     -- 文本颜色
-    ele.__text_color = _params.text_color or DreamGUI.__DEFAULT_COLOR_TEXT
+    ele.__text_color = _params.text_color or DreamGUI.__COLOR.BLACK
     -- 背景颜色
-    ele.__back_color = _params.back_color or {r = 0, g = 0, b = 0, a = 0}
+    ele.__back_color = _params.back_color or DreamGUI.__COLOR.TRANS
     -- 背景纹理
-    ele.__back_texture = _params.back_texture or nil
+    ele.__back_texture = _params.back_texture
     -- 背景模式，0 为纯色背景，1 为纹理背景
     if _params.back_mode then
         ele.__back_mode = _params.back_mode
@@ -411,9 +424,9 @@ DreamGUI.Label = function(_params)
         ele.__back_mode = 0
     end
     -- 边框颜色
-    ele.__frame_color = _params.frame_color or {r = 0, g = 0, b = 0, a = 0}
+    ele.__frame_color = _params.frame_color or DreamGUI.__COLOR.TRANS
     -- 文本字体
-    ele.__font = _params.font or nil
+    ele.__font = _params.font
     -- 字体高度
     if ele.__font then
         ele.__font_height = ele.__font:Height()
@@ -432,8 +445,6 @@ DreamGUI.Label = function(_params)
     -- 文本纹理
     if ele.__font then
         ele.__text_texture = Graphic.CreateTexture(Graphic.TextImageQuality(ele.__font, ele.__text, ele.__text_color))
-    else
-        ele.__text_texture = nil
     end
     -- 水平对齐模式，-1 为左对齐，0 为居中，1 为右对齐
     ele.__align_mode_x = _params.align_mode_x or 0
@@ -444,7 +455,7 @@ DreamGUI.Label = function(_params)
     -- 文本纹理显示区域
     ele.__text_texture_rect_dst = {x = 0, y = 0, w = 0, h = 0}
 
-    function ele:__UpdateDstAndSrcRect()
+    function ele:__UpdateTextTextureDstAndSrcRect()
         local texture_width, texture_height = self.__text_texture:Size()
 
         self.__text_texture_rect_src.w = math.min(texture_width, self.__text_area.w)
@@ -457,10 +468,10 @@ DreamGUI.Label = function(_params)
             self.__text_texture_rect_dst.x = self.__text_area.x
         elseif self.__align_mode_x == 1 then
             self.__text_texture_rect_src.x = texture_width - self.__text_texture_rect_src.w
-            self.__text_texture_rect_dst.x = self.__text_area.x + self.__text_area.w - self.__text_texture_rect_src.w
+            self.__text_texture_rect_dst.x = self.__text_area.x + (self.__text_area.w - self.__text_texture_rect_dst.w) / 2
         else
             self.__text_texture_rect_src.x = (texture_width - self.__text_texture_rect_src.w) / 2
-            self.__text_texture_rect_dst.x = self.__text_area.x + (self.__text_area.w - self.__text_texture_rect_src.w) / 2
+            self.__text_texture_rect_dst.x = self.__text_area.x + (self.__text_area.w - self.__text_texture_rect_dst.w) / 2
         end
 
         if self.__align_mode_y == -1 then
@@ -468,23 +479,29 @@ DreamGUI.Label = function(_params)
             self.__text_texture_rect_dst.y = self.__text_area.y
         elseif self.__align_mode_y == 1 then
             self.__text_texture_rect_src.y = texture_height - self.__text_texture_rect_src.h
-            self.__text_texture_rect_dst.y = self.__text_area.y + self.__text_area.h - self.__text_texture_rect_src.h
+            self.__text_texture_rect_dst.y = self.__text_area.y + (self.__text_area.h - self.__text_texture_rect_dst.h) / 2
         else
             self.__text_texture_rect_src.y = (texture_height - self.__text_texture_rect_src.h) / 2
-            self.__text_texture_rect_dst.y = self.__text_area.y + (self.__text_area.h - self.__text_texture_rect_src.h) / 2
+            self.__text_texture_rect_dst.y = self.__text_area.y + (self.__text_area.h - self.__text_texture_rect_dst.h) / 2
         end
     end
 
     function ele:SetText(_str)
-        self.__text = _str
-        self.__text_texture = Graphic.CreateTexture(Graphic.TextImageQuality(ele.__font, ele.__text, ele.__text_color))
-        self:__UpdateDstAndSrcRect()
+        if not _str or _str == "" then
+            _str = " "
+        else
+            self.__text = _str
+        end
+        if self.__font then
+            self.__text_texture = Graphic.CreateTexture(Graphic.TextImageQuality(ele.__font, ele.__text, ele.__text_color))
+            self:__UpdateTextTextureDstAndSrcRect()
+        end
     end
 
-    function ele:SetText(_font)
+    function ele:SetFont(_font)
         self.__font = _font
         self.__text_texture = Graphic.CreateTexture(Graphic.TextImageQuality(ele.__font, ele.__text, ele.__text_color))
-        self:__UpdateDstAndSrcRect()
+        self:__UpdateTextTextureDstAndSrcRect()
     end
 
     function ele:SetPadding(_widthX, _widthY)
@@ -494,7 +511,7 @@ DreamGUI.Label = function(_params)
         self.__text_area.y = self.__area.y + self.__padding_y
         self.__text_area.w = self.__area.w - self.__padding_x * 2
         self.__text_area.h = self.__area.h - self.__padding_y * 2
-        self:__UpdateDstAndSrcRect()
+        self:__UpdateTextTextureDstAndSrcRect()
     end
 
     function ele:SetTextColor(_color)
@@ -523,7 +540,7 @@ DreamGUI.Label = function(_params)
     function ele:SetAlignMode(_modeX, _modeY)
         self.__align_mode_x = _modeX or self.__align_mode_x
         self.__align_mode_y = _modeY or self.__align_mode_y
-        self:__UpdateDstAndSrcRect()
+        self:__UpdateTextTextureDstAndSrcRect()
     end
 
     function ele:Transform(_rect)
@@ -558,7 +575,7 @@ DreamGUI.Label = function(_params)
 
     -- 如果此时文本纹理已存在，则计算纹理的显示和裁剪矩形
     if ele.__text_texture then
-        ele:__UpdateDstAndSrcRect()
+        ele:__UpdateTextTextureDstAndSrcRect()
     end
 
     table.insert(DreamGUI.__elements, ele)
@@ -601,7 +618,7 @@ end
     SetBackMode(_val)
     SetBackColor(_color)
     SetBackTexture(_texture)
-    SetFrameColor(_texture)
+    SetFrameColor(_color)
     SetAlignMode(_modeX, _modeY)
     SetOnHover(_func)
     SetOnLeave(_func)
@@ -647,6 +664,48 @@ DreamGUI.Button = function(_params)
     -- 是否按下
     ele.__down = false
 
+    function ele:SetOnHover(_func)
+        assert(type(_func) == "function")
+
+        self.__on_hover = _func
+    end
+
+    function ele:SetOnLeave(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_leave = _func
+    end
+
+    function ele:SetOnHanging(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_hanging = _func
+    end
+
+    function ele:SetOnDown(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_down = _func
+    end
+
+    function ele:SetOnUp(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_up = _func
+    end
+
+    function ele:SetOnPushing(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_pushing = _func
+    end
+
+    function ele:SetOnClick(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_click = _func
+    end
+
     function ele:SetEnable(_flag)
         local is_hover = DreamGUI.__CheckCursorInRect(self.__area)
 
@@ -659,6 +718,18 @@ DreamGUI.Button = function(_params)
             self:__on_enable() 
         end
         self.__enable = _flag
+    end
+
+    function ele:SetOnEnable(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_enable = _func
+    end
+
+    function ele:SetOnDisable(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_disable = _func
     end
 
     function ele:UpdateEvent(_event_type)
@@ -702,6 +773,417 @@ DreamGUI.Button = function(_params)
         end
 
         base_update_frame(self)
+    end
+
+    table.insert(DreamGUI.__elements, ele)
+
+    return ele
+
+end
+
+--[[
+    Switch
+
+    area
+    font
+    padding
+    back_color_yes
+    back_color_no
+    button_color_yes
+    button_color_no
+    text_yes
+    text_no
+    text_color_yes
+    text_color_no
+    frame_color
+    shape
+    on_switch
+    enable
+    on_enable
+    on_disable
+    open
+
+    SetFont(_font)
+    SetPadding(_width)
+    SetBackColor(_color_yes, _color_no)
+    SetButtonColor(_color_yes, _color_no)
+    SetText(_str_yes, _str_no)
+    SetTextColor(_color_yes, _color_no)
+    SetFrameColor(_color)
+    SetShape(_shape)
+    SetEnable(_flag)
+    SetOnEnable(_func)
+    SetOnDisable(_func)
+    SetOnSwitch(_func)
+    GetStatus()
+    SetStatus(_flag)
+    Transform(_rect)
+--]]
+
+DreamGUI.Switch = function(_params)
+
+    assert(type(_params) == "table")
+
+    local ele = {}
+
+    -- 元素区域
+    ele.__area = _params.area or {x = 0, y = 0, w = 55, h = 25}
+    -- 字体
+    ele.__font = _params.font
+    -- 内边距
+    ele.__padding = _params.padding or 3
+    -- 开关开启时背景颜色
+    ele.__back_color_yes = _params.back_color_yes or DreamGUI.__COLOR.BLUE
+    -- 开关关闭时背景颜色
+    ele.__back_color_no = _params.back_color_no or DreamGUI.__COLOR.GRAY
+    -- 开关开启时按钮颜色
+    ele.__button_color_yes = _params.button_color_yes or DreamGUI.__COLOR.WHITE
+    -- 开关关闭时按钮颜色
+    ele.__button_color_no = _params.button_color_no or DreamGUI.__COLOR.WHITE
+    -- 开关开启时文本
+    ele.__text_yes = _params.text_yes or " "
+    -- 开关关闭时文本
+    ele.__text_no = _params.text_no or " "
+    -- 开关开启时文本颜色
+    ele.__text_color_yes = _params.text_color_yes or DreamGUI.__COLOR.WHITE
+    -- 开关关闭时文本颜色
+    ele.__text_color_no = _params.text_color_no or DreamGUI.__COLOR.BLACK
+    -- 边框颜色
+    ele.__frame_color = _params.frame_color or DreamGUI.__COLOR.GRAY
+    -- 形状，0 为圆形，1 为矩形
+    ele.__shape = _params.shape or 0
+    -- 开关切换时回调
+    ele.__on_switch = _params.on_switch or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 是否启用
+    ele.__enable = _params.enable or true
+    -- 启用时回调
+    ele.__on_enable = _params.on_enable or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 禁用时回调
+    ele.__on_disable = _params.on_disable or DreamGUI.__DEFAULT_EMPTY_FUNC
+    -- 开关是否打开
+    ele.__open = _params.open or false
+    -- 开关文本纹理
+    if ele.__font then
+        ele.__text_texture_yes = Graphic.CreateTexture(Graphic.TextImageQuality(ele.__font, ele.__text_yes, ele.__text_color_yes))
+        ele.__text_texture_no = Graphic.CreateTexture(Graphic.TextImageQuality(ele.__font, ele.__text_no, ele.__text_color_no))
+    end
+    -- 开关打开时文本纹理裁剪区域
+    ele.__text_texture_yes_rect_src = {x = 0, y = 0, w = 0, h = 0}
+    -- 开关打开时文本纹理显示区域
+    ele.__text_texture_yes_rect_dst = {x = 0, y = 0, w = 0, h = 0}
+    -- 开关关闭时文本纹理裁剪区域
+    ele.__text_texture_no_rect_src = {x = 0, y = 0, w = 0, h = 0}
+    -- 开关关闭时文本纹理显示区域
+    ele.__text_texture_no_rect_dst = {x = 0, y = 0, w = 0, h = 0}
+    -- 开关打开时矩形按钮区域
+    ele.__button_rect_yes = {x = 0, y = 0, w = 0, h = 0}
+    -- 开关关闭时矩形按钮区域
+    ele.__button_rect_no = {x = 0, y = 0, w = 0, h = 0}
+    -- 开关打开时圆形按钮圆心
+    ele.__button_center_yes = {x = 0, y = 0}
+    -- 开关关闭时圆形按钮圆心
+    ele.__button_center_no = {x = 0, y = 0}
+    -- 开关圆形按钮半径
+    ele.__button_radius = 0
+    -- 开关打开时文本显示区域
+    ele.__text_area_yes = {x = 0, y = 0, w = 0, h = 0}
+    -- 开关关闭时文本显示区域
+    ele.__text_area_no = {x = 0, y = 0, w = 0, h = 0}
+    -- 是否进入
+    ele.__enter = false
+    -- 是否按下
+    ele.__down = false
+
+    function ele:__UpdateTextArea()
+        self.__text_area_yes.x = self.__area.x + self.__padding
+        self.__text_area_yes.y = self.__area.y + self.__padding
+        self.__text_area_yes.w = self.__button_rect_yes.x - self.__text_area_yes.x - 2 * self.__padding
+        self.__text_area_yes.h = self.__area.h - 2 * self.__padding
+
+        self.__text_area_no.x = self.__area.x + self.__button_rect_no.w + 2 * self.__padding
+        self.__text_area_no.y = self.__text_area_yes.y
+        self.__text_area_no.w = self.__text_area_yes.w
+        self.__text_area_no.h = self.__text_area_yes.h
+    end
+
+    function ele:__UpdateTextTextureDstAndSrcRect()
+        local width_texture_text_yes, height_texture_text_yes = self.__text_texture_yes:Size()
+        self.__text_texture_yes_rect_src.w = math.min(width_texture_text_yes, self.__text_area_yes.w)
+        self.__text_texture_yes_rect_src.h = math.min(height_texture_text_yes, self.__text_area_yes.h)
+        self.__text_texture_yes_rect_src.x = (width_texture_text_yes - self.__text_texture_yes_rect_src.w) / 2
+        self.__text_texture_yes_rect_src.y = (height_texture_text_yes - self.__text_texture_yes_rect_src.h) / 2
+        self.__text_texture_yes_rect_dst.w = self.__text_texture_yes_rect_src.w
+        self.__text_texture_yes_rect_dst.h = self.__text_texture_yes_rect_src.h
+        self.__text_texture_yes_rect_dst.x = self.__text_area_yes.x + (self.__text_area_yes.w - self.__text_texture_yes_rect_dst.w) / 2
+        self.__text_texture_yes_rect_dst.y = self.__text_area_yes.y + (self.__text_area_yes.h - self.__text_texture_yes_rect_dst.h) / 2
+
+        local width_texture_text_no, height_texture_text_no = self.__text_texture_no:Size()
+        self.__text_texture_no_rect_src.w = math.min(width_texture_text_no, self.__text_area_no.w)
+        self.__text_texture_no_rect_src.h = math.min(height_texture_text_no, self.__text_area_no.h)
+        self.__text_texture_no_rect_src.x = (width_texture_text_no - self.__text_texture_no_rect_src.w) / 2
+        self.__text_texture_no_rect_src.y = (height_texture_text_no - self.__text_texture_no_rect_src.h) / 2
+        self.__text_texture_no_rect_dst.w = self.__text_texture_no_rect_src.w
+        self.__text_texture_no_rect_dst.h = self.__text_texture_no_rect_src.h
+        self.__text_texture_no_rect_dst.x = self.__text_area_no.x + (self.__text_area_no.w - self.__text_texture_no_rect_dst.w) / 2
+        self.__text_texture_no_rect_dst.y = self.__text_area_no.y + (self.__text_area_no.h - self.__text_texture_no_rect_dst.h) / 2
+    end
+
+    function ele:__UpdateButtonArea()
+        local side_width = self.__area.h - 2 * self.__padding
+
+        self.__button_rect_yes.x = self.__area.x + self.__area.w - self.__padding - side_width
+        self.__button_rect_yes.y = self.__area.y + self.__padding
+        self.__button_rect_yes.w, self.__button_rect_yes.h = side_width, side_width
+
+        self.__button_rect_no.x = self.__area.x + self.__padding
+        self.__button_rect_no.y = self.__area.y + self.__padding
+        self.__button_rect_no.w, self.__button_rect_no.h = side_width, side_width
+
+        self.__button_radius = side_width / 2
+
+        self.__button_center_yes.x = self.__area.x + self.__area.w - self.__padding - self.__button_radius
+        self.__button_center_yes.y = self.__area.y + self.__area.h / 2
+
+        self.__button_center_no.x = self.__area.x + self.__padding + self.__button_radius
+        self.__button_center_no.y = self.__button_center_yes.y
+    end
+
+    function ele:SetFont(_font)
+        self.__font = _font
+        ele.__text_texture_yes = Graphic.CreateTexture(Graphic.TextImageQuality(ele.__font, ele.__text_yes, ele.__text_color_yes))
+        ele.__text_texture_no = Graphic.CreateTexture(Graphic.TextImageQuality(ele.__font, ele.__text_no, ele.__text_color_no))
+        self:__UpdateTextTextureDstAndSrcRect()
+    end
+
+    function ele:SetPadding(_width)
+        self.__padding = _width
+        self:__UpdateButtonArea()
+        self:__UpdateTextArea()
+        self:__UpdateTextTextureDstAndSrcRect()
+    end
+
+    function ele:SetBackColor(_color_yes, _color_no)
+        if _color_yes then
+            assert(type(_color_yes) == "table")
+
+            self.__back_color_yes.r = _color_yes.r or self.__back_color_yes.r
+            self.__back_color_yes.g = _color_yes.g or self.__back_color_yes.g
+            self.__back_color_yes.b = _color_yes.b or self.__back_color_yes.b
+            self.__back_color_yes.a = _color_yes.a or self.__back_color_yes.a
+        end
+        if _color_no then
+            assert(type(_color_no) == "table")
+
+            self.__back_color_no.r = _color_no.r or self.__back_color_no.r
+            self.__back_color_no.g = _color_no.g or self.__back_color_no.g
+            self.__back_color_no.b = _color_no.b or self.__back_color_no.b
+            self.__back_color_no.a = _color_no.a or self.__back_color_no.a
+        end
+    end
+
+    function ele:SetButtonColor(_color_yes, _color_no)
+        if _color_yes then
+            assert(type(_color_yes) == "table")
+
+            self.__button_color_yes.r = _color_yes.r or self.__button_color_yes.r
+            self.__button_color_yes.g = _color_yes.g or self.__button_color_yes.g
+            self.__button_color_yes.b = _color_yes.b or self.__button_color_yes.b
+            self.__button_color_yes.a = _color_yes.a or self.__button_color_yes.a
+        end
+        if _color_no then
+            assert(type(_color_no) == "table")
+
+            self.__button_color_no.r = _color_no.r or self.__button_color_no.r
+            self.__button_color_no.g = _color_no.g or self.__button_color_no.g
+            self.__button_color_no.b = _color_no.b or self.__button_color_no.b
+            self.__button_color_no.a = _color_no.a or self.__button_color_no.a
+        end
+    end
+
+    function ele:SetText(_str_yes, _str_no)
+        self.__text_yes = _str_yes or self.__text_yes
+        self.__text_no = _str_no or self.__text_no
+        if self.__font then
+            self.__text_texture_yes = Graphic.CreateTexture(Graphic.TextImageQuality(self.__font, self.__text_yes, self.__text_color_yes))
+            self.__text_texture_no = Graphic.CreateTexture(Graphic.TextImageQuality(self.__font, self.__text_no, self.__text_color_no))
+            self:__UpdateTextTextureDstAndSrcRect()
+        end
+    end
+
+    function ele:SetTextColor(_color_yes, _color_no)
+        if _color_yes then
+            assert(type(_color_yes) == "table")
+
+            self.__text_color_yes.r = _color_yes.r or self.__text_color_yes.r
+            self.__text_color_yes.g = _color_yes.g or self.__text_color_yes.g
+            self.__text_color_yes.b = _color_yes.b or self.__text_color_yes.b
+            self.__text_color_yes.a = _color_yes.a or self.__text_color_yes.a
+        end
+        if _color_no then
+            assert(type(_color_no) == "table")
+
+            self.__text_color_no.r = _color_no.r or self.__text_color_no.r
+            self.__text_color_no.g = _color_no.g or self.__text_color_no.g
+            self.__text_color_no.b = _color_no.b or self.__text_color_no.b
+            self.__text_color_no.a = _color_no.a or self.__text_color_no.a
+        end
+        if self.__font then
+            self.__text_texture_yes = Graphic.CreateTexture(Graphic.TextImageQuality(self.__font, self.__text_yes, self.__text_color_yes))
+            self.__text_texture_no = Graphic.CreateTexture(Graphic.TextImageQuality(self.__font, self.__text_no, self.__text_color_no))
+        end
+    end
+
+    function ele:SetFrameColor(_color)
+        assert(type(_color) == "table")
+
+        self.__frame_color.r = _color.r or self.__frame_color.r
+        self.__frame_color.g = _color.g or self.__frame_color.g
+        self.__frame_color.b = _color.b or self.__frame_color.b
+        self.__frame_color.a = _color.a or self.__frame_color.a
+    end
+
+    function ele:SetShape(_shape)
+        self.__shape = _shape
+    end
+
+    function ele:SetEnable(_flag)
+        local is_hover = DreamGUI.__CheckCursorInRect(self.__area)
+
+        if self.__enable and not _flag then
+            if is_hover then Window.SetCursorStyle(Window.CURSOR_NO) end
+            self:__on_disable() 
+        end
+        if not self.__enable and _flag then
+            if is_hover then Window.SetCursorStyle(Window.CURSOR_HAND) end
+            self:__on_enable() 
+        end
+        self.__enable = _flag
+    end
+
+    function ele:SetOnEnable(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_enable = _func
+    end
+
+    function ele:SetOnDisable(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_disable = _func
+    end
+
+    function ele:SetOnSwitch(_func)
+        assert(type(_func) == "function")
+            
+        self.__on_disable = _func
+    end
+
+    function ele:GetStatus()
+        return self.__open
+    end
+
+    function ele:SetStatus(_flag)
+        if (not self.__open and _flag) or (self.__open and not _flag) then 
+            self:__on_switch(_flag)
+        end
+        self.__open = _flag
+    end
+
+    function ele:Transform(_rect)
+        assert(type(_rect) == "table")
+
+        self.__area.x = _rect.x or self.__area.x
+        self.__area.y = _rect.y or self.__area.y
+        self.__area.w = _rect.w or self.__area.w
+        self.__area.h = _rect.h or self.__area.h
+
+        self:__UpdateButtonArea()
+        self:__UpdateTextArea()
+        self:__UpdateTextTextureDstAndSrcRect()
+    end
+
+    function ele:UpdateEvent(_event_type)
+        local is_hover = DreamGUI.__CheckCursorInRect(self.__area)
+
+        if _event_type == Input.EVENT_MOUSEMOTION then
+            if is_hover and not self.__enter then
+                if self.__enable then
+                    Window.SetCursorStyle(Window.CURSOR_HAND)
+                else
+                    Window.SetCursorStyle(Window.CURSOR_NO)
+                end
+            elseif not is_hover and self.__enter then
+                Window.SetCursorStyle(Window.CURSOR_ARROW)
+            end
+        elseif self.__enable then
+            if _event_type == Input.EVENT_MOUSEBTNDOWN then
+                if is_hover and not self.__down then
+                    self.__down = true
+                end
+            elseif _event_type == Input.EVENT_MOUSEBTNUP then
+                if self.__down then
+                    self.__down = false
+                    if is_hover then 
+                        self.__open = not self.__open
+                        self:__on_switch(self.__open)
+                    end
+                end
+            end
+        end
+
+        self.__enter = is_hover
+    end
+
+    function ele:UpdateFrame()
+        if self.__open then
+            Graphic.SetDrawColor(self.__back_color_yes)
+        else
+            Graphic.SetDrawColor(self.__back_color_no)
+        end
+        if self.__shape == 0 then
+            Graphic.DrawRoundRectangle(self.__area, self.__area.h / 2, true)
+        else
+            Graphic.DrawRectangle(self.__area, true)
+        end
+
+        Graphic.SetDrawColor(self.__frame_color)
+        if self.__shape == 0 then
+            Graphic.DrawRoundRectangle(self.__area, self.__area.w / 2)
+        else
+            Graphic.DrawRectangle(self.__area)
+        end
+
+        if self.__open then
+            Graphic.RenderTexture(self.__text_texture_yes, self.__text_texture_yes_rect_dst, self.__text_texture_yes_rect_src)
+        else
+            Graphic.RenderTexture(self.__text_texture_no, self.__text_texture_no_rect_dst, self.__text_texture_no_rect_src)
+        end
+
+        if self.__open then
+            Graphic.SetDrawColor(self.__button_color_yes)
+        else
+            Graphic.SetDrawColor(self.__button_color_no)
+        end
+        if self.__shape == 0 then
+            if self.__open then
+                Graphic.DrawCircle(self.__button_center_yes, self.__button_radius, true)
+            else
+                Graphic.DrawCircle(self.__button_center_no, self.__button_radius, true)
+            end
+        else
+            if self.__open then
+                Graphic.DrawRectangle(self.__button_rect_yes, true)
+            else
+                Graphic.DrawRectangle(self.__button_rect_no, true)
+            end
+        end
+    end
+
+    ele:__UpdateButtonArea()
+    ele:__UpdateTextArea()
+    -- 如果此时文本纹理已存在，则计算纹理的显示和裁剪矩形
+    if ele.__text_texture_yes and ele.__text_texture_no then
+        ele:__UpdateTextTextureDstAndSrcRect()
     end
 
     table.insert(DreamGUI.__elements, ele)
