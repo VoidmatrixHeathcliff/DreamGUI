@@ -17,6 +17,7 @@ Window  = require("@Window")
     DialogBox(_params)
     Label(_params)
     Button(_params)
+    Switch(_params)
 --]]
 
 local DreamGUI = {}
@@ -801,7 +802,7 @@ end
     enable
     on_enable
     on_disable
-    open
+    opened
 
     SetFont(_font)
     SetPadding(_width)
@@ -861,7 +862,7 @@ DreamGUI.Switch = function(_params)
     -- 禁用时回调
     ele.__on_disable = _params.on_disable or DreamGUI.__DEFAULT_EMPTY_FUNC
     -- 开关是否打开
-    ele.__open = _params.open or false
+    ele.__opened = _params.opened or false
     -- 开关文本纹理
     if ele.__font then
         ele.__text_texture_yes = Graphic.CreateTexture(Graphic.TextImageQuality(ele.__font, ele.__text_yes, ele.__text_color_yes))
@@ -1079,14 +1080,14 @@ DreamGUI.Switch = function(_params)
     end
 
     function ele:GetStatus()
-        return self.__open
+        return self.__opened
     end
 
     function ele:SetStatus(_flag)
-        if (not self.__open and _flag) or (self.__open and not _flag) then 
+        if (not self.__opened and _flag) or (self.__opened and not _flag) then 
             self:__on_switch(_flag)
         end
-        self.__open = _flag
+        self.__opened = _flag
     end
 
     function ele:Transform(_rect)
@@ -1124,8 +1125,8 @@ DreamGUI.Switch = function(_params)
                 if self.__down then
                     self.__down = false
                     if is_hover then 
-                        self.__open = not self.__open
-                        self:__on_switch(self.__open)
+                        self.__opened = not self.__opened
+                        self:__on_switch(self.__opened)
                     end
                 end
             end
@@ -1135,7 +1136,7 @@ DreamGUI.Switch = function(_params)
     end
 
     function ele:UpdateFrame()
-        if self.__open then
+        if self.__opened then
             Graphic.SetDrawColor(self.__back_color_yes)
         else
             Graphic.SetDrawColor(self.__back_color_no)
@@ -1153,25 +1154,25 @@ DreamGUI.Switch = function(_params)
             Graphic.DrawRectangle(self.__area)
         end
 
-        if self.__open then
+        if self.__opened then
             Graphic.RenderTexture(self.__text_texture_yes, self.__text_texture_yes_rect_dst, self.__text_texture_yes_rect_src)
         else
             Graphic.RenderTexture(self.__text_texture_no, self.__text_texture_no_rect_dst, self.__text_texture_no_rect_src)
         end
 
-        if self.__open then
+        if self.__opened then
             Graphic.SetDrawColor(self.__button_color_yes)
         else
             Graphic.SetDrawColor(self.__button_color_no)
         end
         if self.__shape == 0 then
-            if self.__open then
+            if self.__opened then
                 Graphic.DrawCircle(self.__button_center_yes, self.__button_radius, true)
             else
                 Graphic.DrawCircle(self.__button_center_no, self.__button_radius, true)
             end
         else
-            if self.__open then
+            if self.__opened then
                 Graphic.DrawRectangle(self.__button_rect_yes, true)
             else
                 Graphic.DrawRectangle(self.__button_rect_no, true)
@@ -1189,6 +1190,68 @@ DreamGUI.Switch = function(_params)
     table.insert(DreamGUI.__elements, ele)
 
     return ele
+
+end
+
+
+--[[
+    CheckBox
+
+    area
+    font
+    button_margin
+    button_padding
+    button_back_color
+    button_color
+    text
+    text_back_color
+    text_color
+    text_back_mode
+    text_back_texture
+    button_frame_color_yes
+    button_frame_color_no
+    shape
+    on_switch
+    enable
+    on_enable
+    on_disable
+    checked
+
+    SetFont(_font)
+    SetButtonMargin(_width)
+    SetButtonPadding(_width)
+    SetButtonBackColor(_color)
+    SetButtonColor(_color)
+    SetText(_str_yes, _str_no)
+    SetTextBackColor(_color)
+    SetTextColor(_color)
+    SetTextBackMode(_val)
+    SetTextBackTexture(_texture)
+    SetButtonFrameColor(_color_yes, _color_no)
+    SetShape(_shape)
+    SetOnSwitch(_func)
+    SetEnable(_flag)
+    SetOnEnable(_func)
+    SetOnDisable(_func)
+    GetStatus()
+    SetStatus(_flag)
+    Transform(_rect)
+--]]
+
+DreamGUI.CheckBox = function(_params)
+
+    assert(type(_params) == "table")
+
+    local ele = {}
+
+    -- 元素区域
+    ele.__area = _params.area or {x = 0, y = 0, w = 55, h = 25}
+    -- 字体
+    ele.__font = _params.font
+    -- 按钮外边距
+    ele.__button_margin = _params.button_margin or 10
+    -- 按钮内边距
+    ele.__button_padding = _params.button_padding or 5
 
 end
 
